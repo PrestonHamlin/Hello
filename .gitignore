@@ -1,0 +1,19 @@
+# .gitignore file for Hello directory - Preston Hamlin
+#   This covers general language and IDE content. More specific files can be
+#   found in the subdirectory for the demo, if they are required.
+
+# IDE stuff
+.project
+.cproject
+
+# C and C++
+*.o
+*.gch
+*.exe
+*.out
+
+# python
+__pycache__
+*.pyc
+*.pyo
+
