@@ -12,8 +12,10 @@
 *.exe
 *.out
 
-# python
+# Python
 __pycache__
 *.pyc
 *.pyo
 
+# Prolog
+*.pl~
