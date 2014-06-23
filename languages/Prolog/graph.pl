@@ -99,7 +99,7 @@
 % TODO: Helper functions
 % 
 % TODO: Pathing
-%   TODO: Simple path
+%   DONE: Simple path
 %   TODO: Shortest path     implement BFS
 %   TODO: Cheapest path     unweighted graph has edge weights of 1
 %   TODO: Optimal path      path length added to edge costs
@@ -151,9 +151,55 @@
 %                              Helper Functions  
 %==============================================================================
 
+% adjacent - used to determine if two vertices of a graph are adjacent
+%   true if digraph and there if there is an edge from A to B
+%   true if graph and A->B or B->A
+
+% unweighted
+adjacent(A, B, graph(_, EL))    :- member(e(A, B), EL).
+adjacent(A, B, graph(_, EL))    :- member(e(B, A), EL).
+adjacent(A, B, digraph(_, EL))  :- member(e(A, B), EL).
+
+% weighted
+adjacent(A, B, graph(_, EL))    :- member(e(A, B, _), EL).
+adjacent(A, B, graph(_, EL))    :- member(e(B, A, _), EL).
+adjacent(A, B, digraph(_, EL))  :- member(e(A, B, _), EL).
+
+% shortened helpers that only care about an edge and a list
+adjacent_(A, B, EL)  :- member(e(A, B), EL).
+adjacent_(A, B, EL)  :- member(e(A, B, _), EL).
+
+
+% finds the number of vertices in a graph
+num_verts(digraph(VL, _), N)    :- length(VL, N).
+num_verts(graph(VL, _), N)      :- length(VL, N).
+
+% finds the number of edges in a graph
+num_edges(digraph(_, EL), N)    :- length(EL, N).
+num_edges(graph(_, EL), N)      :- length(EL, N).
+
+
 
 
 %==============================================================================
 %                             Pathing Functions 
 %==============================================================================
+
+% Simple pathing, default upper bound on path is number of nodes
+%   Since a backtrack search is used, path lengths will tend towards the bound.
+path(A, B, G, P)                        :-
+    num_verts(G, Len),
+    path(A, B, Len, G, P).
+
+path(A, B, Len, digraph(V, EL), P)      :-
+    path_helper(A, B, Len, EL, P).
+
+path_helper(A, B, Len, EL, [A, B])      :- % terminal case, reach goal node
+    adjacent_(A, B, EL),
+    Len > 0.
+
+path_helper(A, B, Len, EL, [A|P1])      :- % to get to B, check out C
+    adjacent_(A, C, EL),
+    Len > 0,
+    path_helper(C, B, Len-1, EL, P1).
 
