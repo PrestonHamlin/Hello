@@ -3,8 +3,21 @@
 #   found in the subdirectory for the demo, if they are required.
 
 # IDE stuff
-.project
-.cproject
+*.project
+*.cproject
+*.sln
+*.sdf
+*.opensdf
+*.suo
+*.vcxproj*
+*.pdb
+Debug/
+
+# runtime stuff
+*.lib
+*.a
+*.so
+*.dll
 
 # C and C++
 *.o
