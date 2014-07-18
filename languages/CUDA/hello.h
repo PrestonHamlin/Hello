@@ -119,7 +119,15 @@ One benefit of the concept is that algorithms exist for parallel computation.
   the original data array and sum it with the second-to-last element of the
   result array.
 
-  TODO: second half of Blelloch algorithm
+
+                                  === NOTES ===
+SCAN_OP_SUB may cause some confusion. It is defined here as taking the first
+  term and subtracting all successive terms. This can result in an odd-looking
+  result array of values:
+
+  before: [1, 2,  3,  4,  5,   6,   7,   8]
+  after:  [0, 1, -1, -4, -8, -13, -19, -26]
+
 
   TODO: wrapper functions
     TODO: optimize thread usage
@@ -199,6 +207,11 @@ __global__ void d_ScanOpReduce(T* d_a, int iters, int mode) {
   loc = threadIdx.x +
         threadIdx.y*blockDim.x + 
         threadIdx.z*blockDim.x*blockDim.y;
+
+  // a-b-c-...  ==  a - (b+c+d+...)  == -(-a + b+c+d+...)
+  if (mode == SCAN_OP_SUB) {
+    d_a[0] = -d_a[0];
+  }
 
   for (int i=0; i<iters; ++i) {
     loc1 = (((2*loc)+1) * (1<<i)) - 1;
@@ -283,6 +296,7 @@ __global__ void d_ScanOpDownSweep(T* d_a, int iters, int mode) {
           break;
         case SCAN_OP_SUB: 
           d_a[loc2] += d_a[loc1];
+          break;
         case SCAN_OP_MUL:
           d_a[loc2] *= d_a[loc1];
           break;
@@ -309,6 +323,13 @@ __global__ void d_ScanOpDownSweep(T* d_a, int iters, int mode) {
     }
     __syncthreads();  // synchronizes threads within block
   }
+
+  // last step for subtraction is to negate the array
+  if (mode == SCAN_OP_SUB) {
+    if (loc < size) {
+      d_a[loc] = -d_a[loc];
+    }
+  }
 }
 
 
@@ -331,7 +352,7 @@ __global__ void d_ScanPrepArray(T* d_a, int iters, int mode) {
     case SCAN_OP_ADD:
       d_a[size-1] = 0;
       break;
-    case SCAN_OP_SUB: 
+    case SCAN_OP_SUB:     // be sure to negate array after downsweep
       d_a[size-1] = 0;
       break;
     case SCAN_OP_MUL:
