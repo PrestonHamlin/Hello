@@ -132,13 +132,13 @@ SCAN_OP_SUB may cause some confusion. It is defined here as taking the first
   TODO: wrapper functions
     TODO: optimize thread usage
     TODO: split oddly sized arrays into power-of-two chunks
-
   TODO: version of scan optimized for latency/occupancy/perormance
-
   TODO: exceptions
-
   TODO: better options for min/max literals?
     TODO: try using d_ScanOpReduce with opposite operation to get identity val
+  TODO: enum rather than #define for modes
+  TODO: multi-block variants
+    TODO: combine into one massive multi-block monster?
 
 */
 
@@ -167,19 +167,57 @@ __global__ void CPrintID();
 
 // templated declarations
 template <class T>
-__device__ void d_ScanApplyOp(T* x, T* y, int mode);
-template <class T>
 __global__ void d_ScanOpReduce(T* d_a, int iters, int mode);
 template <class T>
 __global__ void d_ScanPrepArray(T* d_a, int iters, int mode);
+template <class T>
+__global__ void d_ScanOpDownSweep(T* d_a, int iters, int mode);
 
-
+template <class T>
+void ScanArrayBlelloch(T* d_a, int size, int mode);
 
 
 
 //============================================================================
 //                          Templated Functions
 //============================================================================
+
+/* ScanArrayBlelloch - Performs Blelloch scan of some sort on array
+This function breaks an array into nicely sized pieces wich are operated on in
+  parallel. Each segment of the array then has a successor value from the
+  segment previous added to all of its terms, to make it as though the array
+  as a whole were scanned, rather than in segments.
+
+  T* d_a    - some numeric type data array
+  int size  - number of elements in the array
+  int mode  - integer value describing operation (add, max, XOR, etc...) to use
+
+  TODO: multi-block synchonization?
+  TODO: break array into chunks
+    TODO: recursive or iterative?
+    TODO: uneven edge of array
+    TODO: stream calls to have them run in parallel
+*/
+template <class T>
+void ScanArrayBlelloch(T* d_a, int size, int mode) {
+  int iters = 0, count = size;
+
+  if (!d_a) {
+    NormalError("NULL array passed to ScanArrayBlelloch");
+    return;
+  }
+
+  while (count >>= 1) ++iters;
+
+  d_ScanOpReduce<<<1, dim3(16, 16)>>> (d_a, iters, mode);   // reduce elements
+  printf("reduced...\n");
+  d_ScanPrepArray<<<1, dim3(1, 1)>>>(d_a, iters, mode);     // identity value
+  printf("prepped...\n");
+  d_ScanOpDownSweep<<<1, dim3(16, 16)>>>(d_a, iters, mode); // gather, permiate
+  printf("finished...\n");
+
+}
+
 
 /* d_ScanOpReduce - Reduce half of a scan operation
 This is the first half of a scan operation. If only the resulting total or
@@ -372,3 +410,5 @@ __global__ void d_ScanPrepArray(T* d_a, int iters, int mode) {
       break;
   }
 }
+
+
