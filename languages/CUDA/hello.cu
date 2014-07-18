@@ -28,16 +28,25 @@ int main() {
   }
   cudaMemcpy(d_a, a, sizeof(int) * 16, cudaMemcpyHostToDevice);
 
+
+
+
   printf("\n=== Before ===\n");
   for (int i=0; i<16; ++i) printf("%d\n", a[i]);
 
-  printf("\n=== After Step 1 ===\n");
+  printf("\n=== Step 1 ===\n");
   d_ScanOpReduce<<<1, dim3(16, 16)>>>(d_a, 4, 0);
   cudaMemcpy(a, d_a, sizeof(int) * 16, cudaMemcpyDeviceToHost);
   for (int i=0; i<16; ++i) printf("%d\n", a[i]);
 
+  printf("\n=== Step 2 ===\n");
+  d_ScanPrepArray<<<1, 1>>>             (d_a, 4, 0);  // default stream, so not
+  d_ScanOpDownSweep<<<1, dim3(16, 16)>>>(d_a, 4, 0);  // concurrent on GPU
+  cudaMemcpy(a, d_a, sizeof(int) * 16, cudaMemcpyDeviceToHost);
+  for (int i=0; i<16; ++i) printf("%d\n", a[i]);
 
-  printf("\n=== After Step 2 ===\n");
+
+
 
 
 

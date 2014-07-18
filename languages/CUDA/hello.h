@@ -129,6 +129,9 @@ One benefit of the concept is that algorithms exist for parallel computation.
 
   TODO: exceptions
 
+  TODO: better options for min/max literals?
+    TODO: try using d_ScanOpReduce with opposite operation to get identity val
+
 */
 
 
@@ -138,7 +141,6 @@ One benefit of the concept is that algorithms exist for parallel computation.
 
 #include <stdio.h>
 #include <stdlib.h>
-
 
 
 #define SCAN_OP_ADD 0
@@ -160,7 +162,8 @@ template <class T>
 __device__ void d_ScanApplyOp(T* x, T* y, int mode);
 template <class T>
 __global__ void d_ScanOpReduce(T* d_a, int iters, int mode);
-
+template <class T>
+__global__ void d_ScanPrepArray(T* d_a, int iters, int mode);
 
 
 
@@ -176,7 +179,7 @@ This is the first half of a scan operation. If only the resulting total or
   the other half should be used to populate the remainder of the array with
   the intermediate values.
 
-  T* d_a    - some numeric data type
+  T* d_a    - some numeric type data array
   int iters - number of iterations to perform op, equal to lg of the array size
   int mode  - integer value describing operation (add, max, XOR, etc...) to use
 
@@ -204,7 +207,6 @@ __global__ void d_ScanOpReduce(T* d_a, int iters, int mode) {
     if (loc2 < size) {  // if valid desination, perform op
       printf("%d - %d -> %d\n", i, loc1, loc2);
       
-      //d_ScanApplyOp(d_a[loc1], d_a[loc2], mode);
       switch (mode) {
         case SCAN_OP_ADD:
           d_a[loc2] = (d_a[loc1] + d_a[loc2]);
@@ -224,6 +226,8 @@ __global__ void d_ScanOpReduce(T* d_a, int iters, int mode) {
           d_a[loc2] = (d_a[loc1] < d_a[loc2]) ? d_a[loc2] : d_a[loc1];
           break;
         case SCAN_OP_XOR:
+//          printf("%08X ^ %08X = %08X\n", d_a[loc1], d_a[loc2],
+//                 d_a[loc1] ^ d_a[loc2]);
           d_a[loc2] = (d_a[loc1] ^ d_a[loc2]);
           break;
         default:
@@ -236,36 +240,114 @@ __global__ void d_ScanOpReduce(T* d_a, int iters, int mode) {
 
 }
 
-// This function performs various operaions on two values in a device array. It
-//  could be left inside d_ScanOp, but is extracted for readability. There are
-//  too few levels of indirection to make function pointers worthwhile.
+
+/* d_ScanOpDownSweep - Down-sweep half of a scan operation
+This is the second half of a scan operation. This function is airly useless
+  without first using the d_ScanOpReduce function. 
+
+  T* d_a    - some numeric type data array
+  int iters - number of iterations to perform op, equal to lg of the array size
+  int mode  - integer value describing operation (add, max, XOR, etc...) to use
+
+  TODO: multi-block synchonization?
+*/
 template <class T>
-__device__ void d_ScanApplyOp(T* x, T* y, int mode) {
+__global__ void d_ScanOpDownSweep(T* d_a, int iters, int mode) {
+  const int size = (1 << iters);
+  int loc = 0, loc1 = 0, loc2 = 0;
+  T tmp = 0;
+
+  if (!d_a) {
+    NormalError("NULL array passed to d_ScanOpDownSweep");
+    return;
+  }
+
+
+  loc = threadIdx.x +
+        threadIdx.y*blockDim.x + 
+        threadIdx.z*blockDim.x*blockDim.y;
+
+  for (int i=(iters-1); i>=0; --i) {
+    loc1 = (((2*loc)+1) * (1<<i)) - 1;
+    loc2 = ((2*(loc+1)) * (1<<i)) - 1;
+
+    if (loc2 < size) {  // if valid desination, perform op
+      printf("%d - %d -> %d\n", i, loc1, loc2);
+      
+      // save right value
+      tmp = d_a[loc2];
+
+      switch (mode) {
+        case SCAN_OP_ADD:
+          d_a[loc2] += d_a[loc1];
+          break;
+        case SCAN_OP_SUB: 
+          d_a[loc2] += d_a[loc1];
+        case SCAN_OP_MUL:
+          d_a[loc2] *= d_a[loc1];
+          break;
+        case SCAN_OP_MIN:
+ //         printf("min(%d, %d) - %d\n", tmp, d_a[loc1], 
+ //                ((tmp > d_a[loc1]) ? d_a[loc1] : tmp));
+          d_a[loc2] = (tmp > d_a[loc1]) ? d_a[loc1] : tmp;
+          break;
+        case SCAN_OP_MAX:
+ //         printf("max(%d, %d) - %d\n", tmp, d_a[loc1], 
+ //                ((tmp < d_a[loc1]) ? d_a[loc1] : tmp));
+          d_a[loc2] = (tmp < d_a[loc1]) ? d_a[loc1] : tmp;
+          break;
+        case SCAN_OP_XOR:
+          d_a[loc2] = (tmp ^ d_a[loc1]);
+          break;
+        default:
+          NormalError("unknown scan op");
+          break;
+      }
+
+      // move right value to the left
+      d_a[loc1] = tmp;
+    }
+    __syncthreads();  // synchronizes threads within block
+  }
+}
+
+
+/* d_ScanPrepArray - Helper function called before d_ScanOpDownSweep
+This function simply preps an array for the second part of the Blelloch scan
+  algorithm. It is to be called before d_ScanOpDownSweep.
+
+  T* d_a    - some numeric type data array
+  int iters - number of iterations to perform op, equal to lg of the array size
+  int mode  - integer value describing operation (add, max, XOR, etc...) to use
+
+  TODO: multi-block synchonization?
+*/
+template <class T>
+__global__ void d_ScanPrepArray(T* d_a, int iters, int mode) {
+  int size = 1<<iters;
+  
+  // prep data array - set last element to identity value
   switch (mode) {
     case SCAN_OP_ADD:
-      *y = (*x + *y);
+      d_a[size-1] = 0;
       break;
-    // subtraction is simply the first term minus all others 
-    //  negate d_a[0], scan add, negate all elements in array
     case SCAN_OP_SUB: 
-      *y = (*x + *y);
+      d_a[size-1] = 0;
       break;
     case SCAN_OP_MUL:
-      *y = (*x * *y);
+      d_a[size-1] = 1;
       break;
-    case SCAN_OP_MIN:
-      *y = (*x > *y) ? *y : *x;
+    case SCAN_OP_MIN:     // best identity value would be +infinity
+      d_a[size-1] = 10000;
       break;
-    case SCAN_OP_MAX:
-      *y = (*x < *y) ? *y : *x;
+    case SCAN_OP_MAX:     // best identity value would be -infinity
+      d_a[size-1] = 0;
       break;
     case SCAN_OP_XOR:
-      *y = (*x ^ *y);
+      d_a[size-1] = 0;
       break;
     default:
       NormalError("unknown scan op");
       break;
   }
 }
-
-
