@@ -2,6 +2,9 @@
 
 // Code by Preston Hamlin
 
+#ifndef _HELLO_H
+#define _HELLO_H
+
 #include <stdio.h>
 
 class HelloClass {
@@ -14,3 +17,5 @@ private:
   void SayGoodbye();
 };
 
+
+#endif

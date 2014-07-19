@@ -142,6 +142,8 @@ SCAN_OP_SUB may cause some confusion. It is defined here as taking the first
 
 */
 
+#ifndef _HELLO_H
+#define _HELLO_H
 
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
@@ -412,3 +414,4 @@ __global__ void d_ScanPrepArray(T* d_a, int iters, int mode) {
 }
 
 
+#endif
