@@ -32,7 +32,7 @@ def FizzBuzzCond(n):
 # Array implementation.
 def FizzBuzzArray(n):
     k = n+1                         # so that "n+1" is not in all these loops
-    stuff = ["" for i in range(k)]  # str(i) would be overwritten often (0.46%)
+    stuff = ["" for i in range(k)]  # str(i) would be overwritten often (46%)
     for i in range(0, k, 3):
         stuff[i] += "Fizz"
     for i in range(0, k, 5):
