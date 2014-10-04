@@ -43,7 +43,7 @@ int main() {
 
 
   // open file for sequential read and calculation of partition locations
-  ifile.open("raven.txt");
+  ifile.open("../raven.txt");
   if (!ifile) FatalError("cannot open file for reading");
   ifile.seekg(0, ios::end);
   file_length = ifile.tellg();
@@ -147,7 +147,7 @@ void PartitionedRead(int id, map<string, int> *wordcount, int *locations) {
   // light debugging output, not exactly mutex worthy
 //  cout << id << '\n';
 
-  ifile.open("raven.txt");
+  ifile.open("../raven.txt");
   if (!ifile) FatalError("cannot open file for readings");
   
   ifile.seekg(locations[id]); 
