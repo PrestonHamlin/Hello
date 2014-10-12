@@ -24,6 +24,10 @@ int main() {
 
   pair<int, int> results_bubble;
 
+  // lambda function to demo templated comparison function
+  auto gt_lambda = [](int a, int b) {return a>b;};
+
+
   // perform bubble sort
   results_bubble = BubbleSort(foo_bubble);
   cout << "\n\n=== Bubble Sort ==="
