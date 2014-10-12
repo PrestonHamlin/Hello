@@ -1,7 +1,3 @@
-#include <vector>
-#include <utility>    // swap, pair
-#include <functional>
-
 using std::pair;
 using std::vector;
 using std::swap;
@@ -9,7 +5,7 @@ using std::swap;
 
 // default of operator<
 template<typename T>
-std::pair<int, int> BubbleSort(std::vector<T> &array) {
+pair<int, int> BubbleSort(vector<T> &array) {
   bool sorted = false;
   int accesses = 0;
   int comparisons = 0;
@@ -35,10 +31,7 @@ std::pair<int, int> BubbleSort(std::vector<T> &array) {
 
 // custom comparator
 template<typename T, typename compare>
-std::pair<int, int> BubbleSort(std::vector<T> &array,
-                               const compare& comp
-                              )
-{
+pair<int, int> BubbleSort(vector<T> &array, const compare& comp) {
   bool sorted = false;
   int accesses = 0;
   int comparisons = 0;
