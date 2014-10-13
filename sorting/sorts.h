@@ -6,5 +6,6 @@
 #include <utility>    // swap, pair
 
 #include "bubble.h"
+#include "heap.h"
 
 #endif

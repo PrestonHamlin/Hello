@@ -21,8 +21,9 @@ using std::vector;
 int main() {
   vector<int> foo {83, 53, 28, 12, 74, 15, 72, 16, 62, 35};
   vector<int> foo_bubble(foo);
+  vector<int> foo_heap(foo);
 
-  pair<int, int> results_bubble;
+  pair<int, int> results_bubble, results_heap;
 
   // lambda function to demo templated comparison function
   auto gt_lambda = [](int a, int b) {return a>b;};
@@ -35,6 +36,14 @@ int main() {
        << "\n  array accesses: " << results_bubble.second
        << "\n";
   for (auto val : foo_bubble) cout << val << " ";
+
+  // perform heap sort
+  results_heap = HeapSort(foo_heap);
+  cout << "\n\n=== Heap Sort ==="
+       << "\n  comparisons:    " << results_heap.first
+       << "\n  array accesses: " << results_heap.second
+       << "\n";
+  for (auto val : foo_heap) cout << val << " ";
 
 
   cout << "\n\nHave a nice day\n";
